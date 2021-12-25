@@ -162,6 +162,7 @@ def ixigua_download2(url, output_dir='.', merge=True, info_only=False, **kwargs)
         if p.returncode == 0 :
             afile = "%s.m4a" % (title)
             vfile = "%s.mp4" % (title)
+            log.i("")
             log.i("remove afile %s" %(afile))
             os.remove(afile) 
             log.i("remove vfile %s" %(vfile))

@@ -1,3 +1,13 @@
+# 源码安装
+python ./setup.py install
+
+```
+xigua example
+you-get -f --debug https://www.ixigua.com/7043782360277451271
+you-get -f --debug "https://www.ixigua.com/6704446868685849092"
+
+```
+
 # You-Get
 
 [![Build Status](https://github.com/soimort/you-get/workflows/develop/badge.svg)](https://github.com/soimort/you-get/actions)
