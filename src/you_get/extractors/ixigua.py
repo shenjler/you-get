@@ -83,7 +83,10 @@ def ixigua_download2(url, output_dir='.', merge=True, info_only=False, **kwargs)
     session = requests.session()
     # 需要先访问一次视频网站获取cookies才行
     session.get(url,headers=headers)
-    result = session.get(url,headers=headers)
+    suffix = "?wid_try=1"
+    if not url.endswith(suffix):
+        url +=suffix
+    result = session.get(url, headers=headers)
 
     title = 'abc' #re.search(r'<title.*?>(?P<title>.*?)</title>',result.text,re.S).group("title")
     # title = match1(result.text, r'<title.*?>(.*?)</title>')
@@ -94,9 +97,13 @@ def ixigua_download2(url, output_dir='.', merge=True, info_only=False, **kwargs)
     # 只取720P
     # video = re.search(r'definition":"720p"[\s|\S]*?main_url":"(?P<main_url>.*?)"',result.text,re.S)
     # videoUrl = str(base64.b64decode(video.group("main_url"))).replace(r".\xd3M\x85","?")
-
     url2 = match1(result.text, r'definition":"720p"[\s|\S]*?main_url":"(.*?)"')
+    log.e(url2)
+
+    s=base64.b64decode(url2)
+    log.e(s)
     videoUrl= base64.b64decode(url2).decode("utf8","ignore").replace(r".M","?")
+    #videoUrl = str(base64.b64decode(url2)).replace(r".\xd3M\x85","?").replace(r"b'","").replace(r"'","")
     log.e("videoUrl: {}".format(videoUrl))
     if videoUrl:
         video_url = videoUrl
