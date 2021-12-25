@@ -2,6 +2,8 @@
 import base64
 import requests
 import binascii
+import subprocess
+
 
 from ..common import *
 import random
@@ -15,6 +17,11 @@ __all__ = ['ixigua_download', 'ixigua_download_playlist_by_url']
 headers = {
     "user-agent": "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.139 "
                   "Safari/537.36",
+    "Connection":"keep-alive",
+    "Cache-Control":"no-cache",
+    "Accept":"text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
+    "Sec-Fetch-Dest":"document",
+
 }
 
 
@@ -79,39 +86,87 @@ def get_video_url_from_video_id(video_id):
         if url.split("=")[-1][0] != "-":  # 参数s不能为负数
             return url
 
+
+# __ac_nonce=061c6d40b006f0e0cd18b; 
+# __ac_signature=_02B4Z6wo00f01g2hi9wAAIDCjaNxnHyZXh4NgY9AAOK879; 
+# __ac_referer=__ac_blank
+def get_signature(__ac_nonce):
+    cmd = 'node -e "require(\\"%s\\").init(\\"%s\\")"' % ('C:\\\\Users\\\\user\\\\Desktop\\\\test.js', __ac_nonce)
+    # pipeline = os.popen(cmd)
+    # sign = subprocess.call(cmd, shell=True)
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True,
+                         stderr=subprocess.PIPE)
+    res, err = p.communicate()
+    # sign = subprocess.check_output(cmd).decode("utf-8")
+
+    sign = res.decode().replace("\n","")
+    # with  os.popen(cmd) as pipeline:
+    #     sign = pipeline.read()
+    # 读取结果
+    print('结果是:', sign)
+
+    # out_bytes = subprocess.check_output(['node D:\\you-get\\src\\you_get\\extractors\\test.js',__ac_nonce],stderr=subprocess.STDOUT)
+    # log.e("out_bytes: {}".format(out_bytes))
+    # sign = os.popen('node sign.js {ac_nonce}'.format(__ac_nonce)).read()
+    return "__ac_signature=" + sign+";"
+
 def ixigua_download2(url, output_dir='.', merge=True, info_only=False, **kwargs):
     session = requests.session()
     # 需要先访问一次视频网站获取cookies才行
-    session.get(url,headers=headers)
+    resp = session.get(url,headers=headers)
+
+    _cookies = []
+    if resp.headers['Set-Cookie']:
+        for c in resp.headers['Set-Cookie'].split("httponly,"):
+            _cookies.append(c.strip().split(' ')[0])
+    headers['cookie'] = ' '.join(_cookies)
+
+    # _cookies.append("__ac_referer=__ac_blank;")
+    # nonce = resp.headers['Set-Cookie'].split("; Path=")[0].split("=")[1]
+    # log.e(nonce)
+    # _cookies.append(get_signature(nonce))
+    # log.e(_cookies)
+    # log.e("============")
+
+    # headers[':authority']='www.ixigua.com'
+    # headers[':method']='GET'
+    # headers[':path']='/7043782360277451271'
+    # headers[':scheme']='https'
+    # headers['accept']='text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9'
+    # headers['accept-encoding']='gzip, deflate'
+    # headers['sec-ch-ua']='" Not A;Brand";v="99", "Chromium";v="96", "Google Chrome";v="96"'
+    # headers['sec-ch-ua-mobile']='?0'
+    # headers['sec-ch-ua-platform']="Windows"
+    # headers['sec-fetch-dest']='document'
+    # headers['sec-fetch-mode']='navigate'
+    # headers['sec-fetch-site']='same-origin'
+    # headers['upgrade-insecure-requests']='1'
+    # headers['referer'] = url
+    # headers["user-agent"]="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.93 Safari/537.36"
+    # headers['cookie'] = "__ac_nonce=061c7029800621ea58f8d; __ac_signature=_02B4Z6wo00f01ajpOhgAAIDBKOvAW222ue2oyT6AAAv-94; __ac_referer=__ac_blank"
+    # log.e(headers)
+
     suffix = "?wid_try=1"
     if not url.endswith(suffix):
         url +=suffix
-    result = session.get(url, headers=headers)
-
-    title = 'abc' #re.search(r'<title.*?>(?P<title>.*?)</title>',result.text,re.S).group("title")
-    # title = match1(result.text, r'<title.*?>(.*?)</title>')
-
-    log.e("title: {}".format(title))
-    # print(result.text)
-    # result.encoding = "UTF-8"
-    # 只取720P
-    # video = re.search(r'definition":"720p"[\s|\S]*?main_url":"(?P<main_url>.*?)"',result.text,re.S)
-    # videoUrl = str(base64.b64decode(video.group("main_url"))).replace(r".\xd3M\x85","?")
-    url2 = match1(result.text, r'definition":"720p"[\s|\S]*?main_url":"(.*?)"')
-    log.e(url2)
-
-    s=base64.b64decode(url2)
-    log.e(s)
+    result = get_content(url, headers=headers)
+    # log.e("data.text: {}".format(result))
+    title = match1(result, r'"video":.*?"title":"(.*?)"')
+    # log.e("title: {}".format(title))
+    if not title:
+        return
+    url2 = match1(result, r'definition":"720p"[\s|\S]*?main_url":"(.*?)"')
+    # log.e(base64.b64decode(url2))
+    # return
     videoUrl= base64.b64decode(url2).decode("utf8","ignore").replace(r".M","?")
-    #videoUrl = str(base64.b64decode(url2)).replace(r".\xd3M\x85","?").replace(r"b'","").replace(r"'","")
-    log.e("videoUrl: {}".format(videoUrl))
+    # log.e("videoUrl: {}".format(videoUrl))
+    
     if videoUrl:
         video_url = videoUrl
-        # videoSize = re.search(r'definition":"720p"[\s|\S]*?size":(?P<videoSize>.*?),',result.text,re.S)
         size = None
         download_urls([video_url], title, "mp4", size, output_dir, merge=merge, headers=headers, **kwargs)
 
-    audio = match1(result.text, r'dynamic_audio_list".*?"main_url":"(.*?)"')
+    audio = match1(result, r'dynamic_audio_list".*?"main_url":"(.*?)"')
     if audio :
         audioUrl = base64.b64decode(audio).decode("utf8","ignore").replace(r".M","?")
         size =None
