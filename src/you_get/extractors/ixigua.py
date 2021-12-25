@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import base64
-
+import requests
 import binascii
 
 from ..common import *
@@ -79,6 +79,36 @@ def get_video_url_from_video_id(video_id):
         if url.split("=")[-1][0] != "-":  # 参数s不能为负数
             return url
 
+def ixigua_download2(url, output_dir='.', merge=True, info_only=False, **kwargs):
+    session = requests.session()
+    # 需要先访问一次视频网站获取cookies才行
+    session.get(url,headers=headers)
+    result = session.get(url,headers=headers)
+
+    title = 'abc' #re.search(r'<title.*?>(?P<title>.*?)</title>',result.text,re.S).group("title")
+    # title = match1(result.text, r'<title.*?>(.*?)</title>')
+
+    log.e("title: {}".format(title))
+    # print(result.text)
+    # result.encoding = "UTF-8"
+    # 只取720P
+    # video = re.search(r'definition":"720p"[\s|\S]*?main_url":"(?P<main_url>.*?)"',result.text,re.S)
+    # videoUrl = str(base64.b64decode(video.group("main_url"))).replace(r".\xd3M\x85","?")
+
+    url2 = match1(result.text, r'definition":"720p"[\s|\S]*?main_url":"(.*?)"')
+    videoUrl= base64.b64decode(url2).decode("utf8","ignore").replace(r".M","?")
+    log.e("videoUrl: {}".format(videoUrl))
+    if videoUrl:
+        video_url = videoUrl
+        # videoSize = re.search(r'definition":"720p"[\s|\S]*?size":(?P<videoSize>.*?),',result.text,re.S)
+        size = None
+        download_urls([video_url], title, "mp4", size, output_dir, merge=merge, headers=headers, **kwargs)
+
+    audio = match1(result.text, r'dynamic_audio_list".*?"main_url":"(.*?)"')
+    if audio :
+        audioUrl = base64.b64decode(audio).decode("utf8","ignore").replace(r".M","?")
+        size =None
+        download_urls([audioUrl], title, "m4a", size, output_dir, merge=merge, headers=headers, **kwargs)
 
 def ixigua_download(url, output_dir='.', merge=True, info_only=False, **kwargs):
     # example url: https://www.ixigua.com/i6631065141750268420/#mid=63024814422
@@ -153,5 +183,5 @@ def ixigua_download_playlist_by_url(url, output_dir='.', merge=True, info_only=F
 
 
 site_info = "ixigua.com"
-download = ixigua_download
+download = ixigua_download2
 download_playlist = ixigua_download_playlist_by_url
