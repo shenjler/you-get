@@ -92,16 +92,10 @@ def get_video_url_from_video_id(video_id):
 # __ac_referer=__ac_blank
 def get_signature(__ac_nonce):
     cmd = 'node -e "require(\\"%s\\").init(\\"%s\\")"' % ('C:\\\\Users\\\\user\\\\Desktop\\\\test.js', __ac_nonce)
-    # pipeline = os.popen(cmd)
-    # sign = subprocess.call(cmd, shell=True)
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True,
                          stderr=subprocess.PIPE)
     res, err = p.communicate()
-    # sign = subprocess.check_output(cmd).decode("utf-8")
-
     sign = res.decode().replace("\n","")
-    # with  os.popen(cmd) as pipeline:
-    #     sign = pipeline.read()
     # 读取结果
     print('结果是:', sign)
 
@@ -120,14 +114,6 @@ def ixigua_download2(url, output_dir='.', merge=True, info_only=False, **kwargs)
         for c in resp.headers['Set-Cookie'].split("httponly,"):
             _cookies.append(c.strip().split(' ')[0])
     headers['cookie'] = ' '.join(_cookies)
-
-    # _cookies.append("__ac_referer=__ac_blank;")
-    # nonce = resp.headers['Set-Cookie'].split("; Path=")[0].split("=")[1]
-    # log.e(nonce)
-    # _cookies.append(get_signature(nonce))
-    # log.e(_cookies)
-    # log.e("============")
-
     # headers[':authority']='www.ixigua.com'
     # headers[':method']='GET'
     # headers[':path']='/7043782360277451271'
@@ -150,14 +136,11 @@ def ixigua_download2(url, output_dir='.', merge=True, info_only=False, **kwargs)
     if not url.endswith(suffix):
         url +=suffix
     result = get_content(url, headers=headers)
-    # log.e("data.text: {}".format(result))
     title = match1(result, r'"video":.*?"title":"(.*?)"')
     # log.e("title: {}".format(title))
     if not title:
         return
     url2 = match1(result, r'definition":"720p"[\s|\S]*?main_url":"(.*?)"')
-    # log.e(base64.b64decode(url2))
-    # return
     videoUrl= base64.b64decode(url2).decode("utf8","ignore").replace(r".M","?")
     # log.e("videoUrl: {}".format(videoUrl))
     
@@ -171,6 +154,21 @@ def ixigua_download2(url, output_dir='.', merge=True, info_only=False, **kwargs)
         audioUrl = base64.b64decode(audio).decode("utf8","ignore").replace(r".M","?")
         size =None
         download_urls([audioUrl], title, "m4a", size, output_dir, merge=merge, headers=headers, **kwargs)
+        cmd = 'ffmpeg -i "%s.mp4" -i "%s.m4a" -vcodec copy -acodec copy -y "%sAV.mp4" ' % (title, title, title)
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True,
+                            stderr=subprocess.PIPE)
+        res, err = p.communicate()
+        # https://www.cnblogs.com/security-darren/p/4733368.html
+        if p.returncode == 0 :
+            afile = "%s.m4a" % (title)
+            vfile = "%s.mp4" % (title)
+            log.i("remove afile %s" %(afile))
+            os.remove(afile) 
+            log.i("remove vfile %s" %(vfile))
+            os.remove(vfile) 
+
+
+
 
 def ixigua_download(url, output_dir='.', merge=True, info_only=False, **kwargs):
     # example url: https://www.ixigua.com/i6631065141750268420/#mid=63024814422
